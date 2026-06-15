@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Raydium × Ifx</title>
+    <link rel="stylesheet" href="/styles.css?v=compact-left" />
+    <script type="importmap">
+      {
+        "imports": {
+          "@solana/web3.js": "https://esm.sh/@solana/web3.js@1.98.4"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="panel-left">
+        <header>
+          <h1>Raydium × Ifx</h1>
+          <p class="sub">CPMM swap · Direct / SOL-bridge · v0 + ALT</p>
+        </header>
+
+        <section class="card wallet-bar">
+          <div class="wallet-bar-col">
+            <div id="walletStatus" class="wallet-status muted">Wallet not connected</div>
+          </div>
+          <div class="wallet-actions">
+            <button id="connectBtn" type="button" class="secondary">Connect wallet</button>
+            <button id="disconnectBtn" type="button" class="secondary hidden">Disconnect</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <label class="row">
+            <span id="mintALabel">Pay</span>
+            <input id="mintA" type="text" placeholder="Mint address" />
+          </label>
+          <div id="tokenAPanel" class="token-panel hidden" aria-live="polite"></div>
+
+          <div class="row mint-swap-row">
+            <span aria-hidden="true"></span>
+            <button id="swapMintsBtn" type="button" class="secondary mint-swap-btn" title="Swap pay and receive mints">
+              ⇅ Swap A ↔ B
+            </button>
+          </div>
+
+          <label class="row">
+            <span id="mintBLabel">Receive</span>
+            <input id="mintB" type="text" placeholder="Mint address" />
+          </label>
+          <div id="tokenBPanel" class="token-panel hidden" aria-live="polite"></div>
+
+          <div class="row input-amount-row">
+            <span id="amountLabel">Amount</span>
+            <div class="input-amount-col">
+              <input id="inputAmount" type="text" inputmode="decimal" placeholder="Enter amount" />
+              <div id="balancePctBtns" class="balance-pct-btns">
+                <button type="button" class="pct-btn secondary" data-pct="10" disabled>10%</button>
+                <button type="button" class="pct-btn secondary" data-pct="25" disabled>25%</button>
+                <button type="button" class="pct-btn secondary" data-pct="50" disabled>50%</button>
+                <button type="button" class="pct-btn secondary" data-pct="75" disabled>75%</button>
+                <button type="button" class="pct-btn secondary" data-pct="100" disabled>MAX</button>
+              </div>
+            </div>
+          </div>
+
+          <label class="row">
+            <span>Slippage %</span>
+            <input id="slippage" type="number" min="0" max="50" step="0.1" value="1" />
+          </label>
+
+          <label class="row">
+            <span>Priority</span>
+            <select id="priorityTier">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+
+          <button id="refreshQuoteBtn" type="button" class="secondary refresh-quote-btn">
+            Refresh quote
+          </button>
+        </section>
+      </div>
+
+      <aside class="panel-right" id="txInspector">
+        <section id="tradeSummary" class="trade-summary trade-summary--idle" aria-live="polite">
+          <div class="trade-summary-toolbar">
+            <span class="trade-summary-label">Trade preview</span>
+            <div class="inspector-actions">
+              <span id="blockhashCountdown" class="blockhash-countdown hidden" aria-live="polite"></span>
+              <button id="simulateBtn" type="button" class="secondary" disabled>Simulate</button>
+              <button id="signSendBtn" type="button" disabled>Sign &amp; Send</button>
+            </div>
+          </div>
+
+          <div class="trade-exchange">
+            <div class="trade-leg">
+              <span class="trade-leg-tag">Pay</span>
+              <div class="trade-leg-values">
+                <span class="trade-leg-amount" id="summaryPayAmount">—</span>
+              </div>
+            </div>
+            <div class="trade-arrow" aria-hidden="true">→</div>
+            <div class="trade-leg trade-leg-out">
+              <span class="trade-leg-tag">Receive</span>
+              <div class="trade-leg-values">
+                <span class="trade-leg-amount" id="summaryReceiveAmount">—</span>
+              </div>
+            </div>
+          </div>
+
+          <p class="trade-summary-sub muted" id="summarySub">Enter amount on the left to preview.</p>
+          <div id="sponsorRow" class="trade-sponsor-row hidden">
+            <label class="sponsor-toggle-label" for="sponsorToggle">
+              <span class="sponsor-toggle-text">Sponsored gas</span>
+              <span class="sponsor-switch">
+                <input type="checkbox" id="sponsorToggle" role="switch" disabled />
+                <span class="sponsor-switch-slider" aria-hidden="true"></span>
+              </span>
+            </label>
+            <p id="sponsorHint" class="trade-sponsor-hint muted"></p>
+          </div>
+          <dl class="trade-summary-stats hidden" id="summaryStats"></dl>
+          <div class="trade-summary-alerts" id="summaryAlerts"></div>
+        </section>
+
+        <div class="inspector-body">
+          <h2 class="inspector-title">Transaction inspector</h2>
+          <p id="inspectorStatus" class="inspector-status muted">
+            Quote to inspect the assembled transaction.
+          </p>
+          <div id="inspectorBanner" class="inspector-banner hidden" aria-live="polite"></div>
+          <div id="inspectorMeta" class="inspector-meta hidden"></div>
+          <div id="inspectorInstructions" class="inspector-instructions"></div>
+          <details id="inspectorRaw" class="inspector-raw hidden">
+            <summary>Raw JSON</summary>
+            <pre id="inspectorRawPre"></pre>
+          </details>
+        </div>
+      </aside>
+    </div>
+    <script src="/app.js?v=compact-left" type="module"></script>
+  </body>
+</html>

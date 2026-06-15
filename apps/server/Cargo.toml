@@ -1,0 +1,27 @@
+[package]
+name = "ifx-raydium-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ifx-raydium"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+axum = { version = "0.8", features = ["json"] }
+ifx-raydium = { path = "../../crates/raydium" }
+ifx-raydium-config = { path = "../../crates/config" }
+ifx-raydium-planner = { path = "../../crates/planner" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+solana-client = { workspace = true }
+solana-commitment-config = { workspace = true }
+solana-sdk = { workspace = true }
+spl-associated-token-account = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tower-http = { version = "0.6", features = ["cors", "fs", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -1,0 +1,66 @@
+[solana]
+# Use a reliable RPC for routing + ALT fetch + blockhash.
+rpc_url = "https://api.mainnet-beta.solana.com"
+commitment = "confirmed"
+address_lookup_tables = [
+    "FNN997LrwgNn9eGrVyJUqna9DknLxHQTBKvdqgWv49ZB",
+]
+
+[ifx]
+program_id = "ifxmwWVVZDmXN2DUVf7wtJYCXTRY4QsL5rzmNkXzxbj"
+public_frames = [
+    "6RNv1eQ7fogEW7R1QGg6dAiddEefGfYgJVtjpvgENtdn",
+]
+
+[priority_fee]
+default_tier = "medium"
+
+[priority_fee.low]
+micro_lamports = 1_000
+compute_unit_limit = 400_000
+
+[priority_fee.medium]
+micro_lamports = 10_000
+compute_unit_limit = 500_000
+
+[priority_fee.high]
+micro_lamports = 50_000
+compute_unit_limit = 600_000
+
+[service_fee]
+bps = 5
+pubkey = "BKNnVDyzcPGCWnk8zX3Cn2KKhLASk5iTjVpxUW7YTb8P"
+
+[sponsor]
+enabled = false
+pubkey = "BKNnVDyzcPGCWnk8zX3Cn2KKhLASk5iTjVpxUW7YTb8P"
+# keypair_path = "/path/to/sponsor.json"
+repay_buffer_percent = 10
+
+[quote]
+debounce_ms = 300
+default_slippage_bps = 100
+
+# Your wallet — optional; the web UI uses the browser wallet extension.
+[wallet]
+# keypair_path = "/path/to/id.json"
+# pubkey = "..."  # optional; derived from keypair_path if omitted
+
+# Default swap form values (editable in the web UI after launch).
+[trade]
+mint_a = "So11111111111111111111111111111111111111112"
+mint_b = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+amount = "0.01"
+slippage_bps = 100
+sponsored = false
+
+[server]
+host = "127.0.0.1"
+port = 8788
+
+[network]
+# Optional HTTP(S) proxy for Raydium API (api-v3.raydium.io).
+# When omitted, HTTPS_PROXY / HTTP_PROXY / ALL_PROXY env vars are used if set.
+# http_proxy = "http://127.0.0.1:7890"
+# Raydium API timeout (seconds). On timeout the server falls back to on-chain RPC pool discovery.
+raydium_api_timeout_secs = 20
