@@ -29,6 +29,15 @@ Connect a wallet (Phantom / Solflare), enter mints and amount, preview quote + a
 | Optional HTTP proxy for Raydium API | ✅ |
 | Web UI (wallet, quote, inspector, simulate) | ✅ |
 
+## Example transactions (mainnet)
+
+Transactions assembled by this stack on Solana mainnet:
+
+| Flow | Solscan |
+|------|---------|
+| **Two-hop bridge** — A → WSOL → B; smart close empty input ATA | [2wNX5c8zSrW3xgmYKdzpsoD2Bd7dgfBnprWWKQXycn4YjbZriEJKrs3sTbwEaM3ycnwjTZ8dbCRTxk36sC79gAjo](https://solscan.io/tx/2wNX5c8zSrW3xgmYKdzpsoD2Bd7dgfBnprWWKQXycn4YjbZriEJKrs3sTbwEaM3ycnwjTZ8dbCRTxk36sC79gAjo) |
+| **Sponsored bridge** — sponsor co-signs fee payer + rent; on-chain repay from WSOL proceeds; smart close input ATA | [2mEavKoZT39PtSXYwwze7WzgvuRkeXddNXjcequEdAH3DVEE9zovXDvE9QAzHFcT8iSJBzjaWkhMyiD9bEaDAdyz](https://solscan.io/tx/2mEavKoZT39PtSXYwwze7WzgvuRkeXddNXjcequEdAH3DVEE9zovXDvE9QAzHFcT8iSJBzjaWkhMyiD9bEaDAdyz) |
+
 ## Workspace
 
 | Path | Role |
