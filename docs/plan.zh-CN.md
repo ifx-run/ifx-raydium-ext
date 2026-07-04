@@ -37,7 +37,7 @@ ifx-raydium-ext/
     └── plan.md
 ```
 
-**依赖：** `ifx-sdk`（Rust，path 或 crates.io 0.1.1+）、`solana-sdk` 3.x、`tokio`、`axum`、`reqwest`（含 `socks` 可选代理）。
+**依赖：** `ifx-sdk`（Rust，crates.io 0.1.2+）、`solana-sdk` 3.x、`tokio`、`axum`、`reqwest`（含 `socks` 可选代理）。
 
 ---
 
@@ -151,7 +151,7 @@ ComputeBudget (limit + price)
 [ATA creates — 用户或 sponsor]
 → swap (→ WSOL ATA)
 → let WSOL SPL balance delta
-→ [dynamic] platform fee (patched SPL transfer)
+→ [dynamic] platform fee (Ifx `UnwrapLamports` → native SOL to recipient)
 → [optional] close WSOL → native SOL
 → [optional] sponsor repay (见 §8)
 → [optional] smart close 输入 token ATA
@@ -167,7 +167,7 @@ ComputeBudget (limit + price)
 [sponsor] append_sponsor_ata_bootstrap   # sponsor 付 rent，链上计量 ataCost
 → let WSOL baseline (leg1 前)
 → leg1 CPMM: A → WSOL
-→ let WSOL delta → dynamic platform fee
+→ let WSOL delta → dynamic platform fee (`UnwrapLamports` → native SOL)
 → [sponsor] bind repay = (ataCost + txFee) × buffer
 → [sponsor] assert proceeds ≥ fee + repay
 → leg2 CPMM (patched):
@@ -232,10 +232,10 @@ quote_delta ≥ platform_fee + repay   # WSOL proceeds 必须覆盖
 
 | 场景 | 计费 |
 |------|------|
-| 输出 WSOL / SPL | bps × **链上** proceeds delta（Ifx let） |
-| 输入 WSOL（Direct） | bps × gross input，swap 前静态转 |
+| 输出 WSOL / SPL | bps × **链上** proceeds delta；WSOL 侧用 `UnwrapLamports` 收 **native SOL** |
+| 输入 WSOL（Direct） | bps × gross input，swap 前静态 `UnwrapLamports` 扣费 |
 
-配置：`[service_fee] bps`、`pubkey`（fee recipient WSOL/SPL ATA 幂等创建）。
+配置：`[service_fee] bps`、`pubkey`（SOL 侧直接收 lamports；SPL 输出仍转 recipient ATA）。
 
 ---
 

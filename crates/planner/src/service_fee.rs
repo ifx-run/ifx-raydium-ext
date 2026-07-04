@@ -1,5 +1,7 @@
 //! Dynamic platform fee on proceeds (ported from pumpfun-ext `service-fee.ts`).
 
+use ifx_sdk::core::wire::structured_cpi_payload::UnwrapLamportsPatch;
+use ifx_sdk::core::wire::StructuredCpiPatch;
 use ifx_sdk::expr;
 use ifx_sdk::patched_cpi::{
     build_structured_cpi, frame_value, structured_system_transfer, structured_token_transfer,
@@ -11,7 +13,7 @@ use ifx_sdk::typed::ScratchValue;
 use ifx_raydium::constants::NATIVE_MINT;
 use ifx_raydium::constants::TOKEN_PROGRAM_ID;
 use ifx_raydium::swap::user_ata;
-use solana_sdk::instruction::Instruction;
+use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
 use spl_associated_token_account::get_associated_token_address_with_program_id;
 use spl_token_interface::instruction::transfer;
@@ -19,6 +21,8 @@ use spl_token_interface::instruction::transfer;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProceedsLabel {
     Sol,
+    /// Raydium SOL-side proceeds sit in the user's WSOL ATA — fee via `UnwrapLamports` → native SOL.
+    Wsol,
     Spl,
 }
 
@@ -86,6 +90,15 @@ pub fn append_proceeds_after_swap(
         ProceedsLabel::Sol => {
             out.push(patched_sol_transfer(scratch, account.user, recipient, &fee)?);
         }
+        ProceedsLabel::Wsol => {
+            out.push(patched_wsol_unwrap_fee(
+                scratch,
+                account.user_token_ata,
+                recipient,
+                account.user,
+                &fee,
+            )?);
+        }
         ProceedsLabel::Spl => {
             let dest = user_ata(&recipient, &output_mint, &output_token_program);
             let template = transfer(
@@ -126,6 +139,12 @@ pub fn static_service_fee_transfer(
             &recipient,
             fee_raw,
         )),
+        ProceedsLabel::Wsol => Ok(static_wsol_unwrap_fee_transfer(
+            user_token_ata,
+            recipient,
+            user,
+            fee_raw,
+        )),
         ProceedsLabel::Spl => {
             let dest = get_associated_token_address_with_program_id(
                 &recipient,
@@ -151,7 +170,7 @@ fn let_quote_proceeds(
 ) -> Result<ScratchValue, ScratchError> {
     match account.label {
         ProceedsLabel::Sol => batch.lamports(account.user),
-        ProceedsLabel::Spl => batch.spl_token_amount(account.user_token_ata),
+        ProceedsLabel::Wsol | ProceedsLabel::Spl => batch.spl_token_amount(account.user_token_ata),
     }
 }
 
@@ -178,6 +197,54 @@ fn patched_token_transfer(
     scratch.ix_cpi(&built)
 }
 
+fn unwrap_lamports_template(source: Pubkey, destination: Pubkey, authority: Pubkey) -> Instruction {
+    Instruction {
+        program_id: TOKEN_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(source, false),
+            AccountMeta::new(destination, false),
+            AccountMeta::new_readonly(authority, true),
+        ],
+        data: vec![45, 0],
+    }
+}
+
+fn patched_wsol_unwrap_fee(
+    scratch: &mut FrameScratch,
+    source: Pubkey,
+    destination: Pubkey,
+    authority: Pubkey,
+    amount: &ScratchValue,
+) -> Result<Instruction, ScratchError> {
+    let template = unwrap_lamports_template(source, destination, authority);
+    let built = build_structured_cpi(
+        &template,
+        StructuredCpiPatch::TokenUnwrapLamports(UnwrapLamportsPatch::Amount(frame_value(
+            amount,
+        ))),
+    )?;
+    scratch.ix_cpi(&built)
+}
+
+fn static_wsol_unwrap_fee_transfer(
+    source: Pubkey,
+    destination: Pubkey,
+    authority: Pubkey,
+    fee_raw: u64,
+) -> Instruction {
+    let mut data = vec![45u8, 1u8];
+    data.extend_from_slice(&fee_raw.to_le_bytes());
+    Instruction {
+        program_id: TOKEN_PROGRAM_ID,
+        accounts: vec![
+            AccountMeta::new(source, false),
+            AccountMeta::new(destination, false),
+            AccountMeta::new_readonly(authority, true),
+        ],
+        data,
+    }
+}
+
 pub fn proceeds_label_for_mint(mint: &Pubkey) -> ProceedsLabel {
     if *mint == NATIVE_MINT {
         ProceedsLabel::Sol
@@ -189,7 +256,7 @@ pub fn proceeds_label_for_mint(mint: &Pubkey) -> ProceedsLabel {
 /// Raydium CPMM settles the SOL side via WSOL ATA — measure proceeds on SPL balance, not wallet lamports.
 pub fn wsol_proceeds_account(user: Pubkey) -> ProceedsAccount {
     ProceedsAccount {
-        label: ProceedsLabel::Spl,
+        label: ProceedsLabel::Wsol,
         user,
         user_token_ata: user_ata(&user, &NATIVE_MINT, &TOKEN_PROGRAM_ID),
     }

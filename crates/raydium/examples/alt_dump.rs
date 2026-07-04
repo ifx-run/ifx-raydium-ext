@@ -17,10 +17,7 @@ fn main() {
         "ASSOCIATED_TOKEN_PROGRAM={}",
         ifx_raydium::constants::ASSOCIATED_TOKEN_PROGRAM_ID
     );
-    println!(
-        "fee_wsol_ata={}",
-        ifx_raydium::swap::user_ata(&fee_recipient, &NATIVE_MINT, &token_program)
-    );
+    println!("fee_recipient={fee_recipient}");
     println!(
         "fee_usdt_ata={}",
         ifx_raydium::swap::user_ata(&fee_recipient, &usdt, &token_program)

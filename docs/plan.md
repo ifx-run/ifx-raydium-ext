@@ -29,7 +29,7 @@ Pool selection: Raydium API v3 hint, sorted by on-chain reserves when using RPC 
 
 ## Ifx build (summary)
 
-**Direct (SOL output):** WSOL proceeds measured on SPL balance → dynamic fee → optional unwrap → optional sponsor repay.
+**Direct (SOL output):** WSOL proceeds measured on SPL balance → dynamic fee via `UnwrapLamports` → optional unwrap → optional sponsor repay.
 
 **Bridge:**
 
@@ -37,7 +37,7 @@ Pool selection: Raydium API v3 hint, sorted by on-chain reserves when using RPC 
 ixReset
 → [sponsor] ATA bootstrap (sponsor payer, on-chain ataCost)
 → leg1 CPMM (A → WSOL)
-→ let WSOL delta → dynamic platform fee
+→ let WSOL delta → dynamic platform fee (`UnwrapLamports` → native SOL)
 → [sponsor] repay bind + assert
 → leg2 CPMM patch amount_in = net_wsol − repay, min_out scaled on-chain
 → close hop WSOL ATA

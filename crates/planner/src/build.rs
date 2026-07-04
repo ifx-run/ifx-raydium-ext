@@ -258,14 +258,8 @@ impl Planner {
                 &NATIVE_MINT,
                 &ifx_raydium::constants::TOKEN_PROGRAM_ID,
             );
-            out.push(idempotent_ata_create(
-                plan.user,
-                plan.fee_recipient,
-                NATIVE_MINT,
-                ifx_raydium::constants::TOKEN_PROGRAM_ID,
-            ));
             out.push(static_service_fee_transfer(
-                ProceedsLabel::Spl,
+                ProceedsLabel::Wsol,
                 quote.platform_fee,
                 plan.user,
                 user_wsol_ata,
@@ -287,14 +281,6 @@ impl Planner {
             let user_wsol_ata =
                 user_ata(&plan.user, &NATIVE_MINT, &ifx_raydium::constants::TOKEN_PROGRAM_ID);
             let proceeds = wsol_proceeds_account(plan.user);
-            if plan.service_fee_bps > 0 && sponsor.is_none() {
-                out.push(idempotent_ata_create(
-                    plan.user,
-                    plan.fee_recipient,
-                    NATIVE_MINT,
-                    ifx_raydium::constants::TOKEN_PROGRAM_ID,
-                ));
-            }
             let before = append_quote_proceeds_baseline(scratch, out, &proceeds)?;
             out.push(swap_base_input_ix(&ifx_raydium::swap::SwapBuildParams {
                 pool: pool.clone(),
@@ -394,14 +380,6 @@ impl Planner {
                 leg2_out.address,
                 leg2_out_prog,
             ));
-            if plan.service_fee_bps > 0 {
-                out.push(idempotent_ata_create(
-                    plan.user,
-                    plan.fee_recipient,
-                    NATIVE_MINT,
-                    ifx_raydium::constants::TOKEN_PROGRAM_ID,
-                ));
-            }
             None
         };
 
@@ -508,24 +486,16 @@ impl Planner {
 
 fn direct_sol_output_bootstrap_specs(plan: &BuildPlan) -> Vec<AtaSpec> {
     let tp = ifx_raydium::constants::TOKEN_PROGRAM_ID;
-    let mut specs = vec![AtaSpec {
+    vec![AtaSpec {
         owner: plan.user,
         mint: NATIVE_MINT,
         token_program: tp,
-    }];
-    if plan.service_fee_bps > 0 {
-        specs.push(AtaSpec {
-            owner: plan.fee_recipient,
-            mint: NATIVE_MINT,
-            token_program: tp,
-        });
-    }
-    specs
+    }]
 }
 
 fn bridge_bootstrap_specs(plan: &BuildPlan, leg2_mint: Pubkey, leg2_prog: Pubkey) -> Vec<AtaSpec> {
     let tp = ifx_raydium::constants::TOKEN_PROGRAM_ID;
-    let mut specs = vec![
+    vec![
         AtaSpec {
             owner: plan.user,
             mint: NATIVE_MINT,
@@ -536,15 +506,7 @@ fn bridge_bootstrap_specs(plan: &BuildPlan, leg2_mint: Pubkey, leg2_prog: Pubkey
             mint: leg2_mint,
             token_program: leg2_prog,
         },
-    ];
-    if plan.service_fee_bps > 0 {
-        specs.push(AtaSpec {
-            owner: plan.fee_recipient,
-            mint: NATIVE_MINT,
-            token_program: tp,
-        });
-    }
-    specs
+    ]
 }
 
 fn input_close_candidate(plan: &BuildPlan) -> Option<CloseAtaCandidate> {
