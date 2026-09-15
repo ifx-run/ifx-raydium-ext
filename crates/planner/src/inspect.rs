@@ -36,6 +36,14 @@ pub struct TxInstructionInspection {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TransactionConfigInspection {
+    pub compute_unit_limit: u32,
+    pub loaded_accounts_data_size_limit: u32,
+    pub priority_fee_lamports: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TxInspection {
     pub version: u8,
     pub num_instructions: usize,
@@ -52,6 +60,8 @@ pub struct TxInspection {
     pub smart_close_applied: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_size_bytes: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transaction_config: Option<TransactionConfigInspection>,
     pub instructions: Vec<TxInstructionInspection>,
 }
 
@@ -63,6 +73,98 @@ pub struct InspectOpts {
     pub smart_close_applied: Option<bool>,
     pub transaction_size_bytes: Option<usize>,
     pub address_lookup_table_addresses: Vec<String>,
+    pub transaction_config: Option<TransactionConfigInspection>,
+}
+
+/// Inspect a compiled v1 instruction list (all accounts inline; no ALTs).
+pub fn inspect_instructions(
+    instructions: &[solana_sdk::instruction::Instruction],
+    opts: &InspectOpts,
+) -> TxInspection {
+    let static_keys = collect_static_keys(opts.fee_payer.as_ref(), instructions);
+    let index_by_key: std::collections::HashMap<String, usize> = static_keys
+        .iter()
+        .enumerate()
+        .map(|(i, pk)| (pk.clone(), i))
+        .collect();
+
+    let inspected: Vec<TxInstructionInspection> = instructions
+        .iter()
+        .enumerate()
+        .map(|(index, ix)| {
+            let program_id = ix.program_id.to_string();
+            let data = &ix.data;
+            let accounts = ix
+                .accounts
+                .iter()
+                .map(|k| {
+                    let pubkey = k.pubkey.to_string();
+                    TxAccountInspection {
+                        index: *index_by_key.get(&pubkey).unwrap_or(&usize::MAX),
+                        pubkey,
+                        is_signer: k.is_signer,
+                        is_writable: k.is_writable,
+                        alt_loaded: false,
+                        resolution: "static".into(),
+                        in_alt_table_unused: false,
+                    }
+                })
+                .collect();
+
+            TxInstructionInspection {
+                index,
+                program_id: program_id.clone(),
+                program_label: program_label(&program_id, &opts.ifx_program_id),
+                hint: instruction_hint(&program_id, data, &opts.ifx_program_id),
+                accounts,
+                data_hex: bytes_to_hex(data),
+                data_base64: base64::Engine::encode(
+                    &base64::engine::general_purpose::STANDARD,
+                    data,
+                ),
+                data_length: data.len(),
+            }
+        })
+        .collect();
+
+    TxInspection {
+        version: 1,
+        num_instructions: inspected.len(),
+        static_account_keys: static_keys.len(),
+        loaded_writable_accounts: 0,
+        loaded_readonly_accounts: 0,
+        total_account_keys: static_keys.len(),
+        address_lookup_tables: vec![],
+        frame_used: opts.frame_used.map(|p| p.to_string()),
+        fee_payer: opts.fee_payer.map(|p| p.to_string()),
+        smart_close_applied: opts.smart_close_applied,
+        transaction_size_bytes: opts.transaction_size_bytes,
+        transaction_config: opts.transaction_config.clone(),
+        instructions: inspected,
+    }
+}
+
+fn collect_static_keys(
+    fee_payer: Option<&Pubkey>,
+    instructions: &[solana_sdk::instruction::Instruction],
+) -> Vec<String> {
+    let mut keys = Vec::new();
+    let mut seen = HashSet::new();
+    let mut add = |pk: String| {
+        if seen.insert(pk.clone()) {
+            keys.push(pk);
+        }
+    };
+    if let Some(fp) = fee_payer {
+        add(fp.to_string());
+    }
+    for ix in instructions {
+        add(ix.program_id.to_string());
+        for k in &ix.accounts {
+            add(k.pubkey.to_string());
+        }
+    }
+    keys
 }
 
 pub fn inspect_versioned_transaction(
@@ -83,6 +185,7 @@ pub fn inspect_versioned_transaction(
             fee_payer: opts.fee_payer.map(|p| p.to_string()),
             smart_close_applied: opts.smart_close_applied,
             transaction_size_bytes: opts.transaction_size_bytes,
+            transaction_config: None,
             instructions: vec![],
         };
     };
@@ -168,6 +271,7 @@ pub fn inspect_versioned_transaction(
         fee_payer: opts.fee_payer.map(|p| p.to_string()),
         smart_close_applied: opts.smart_close_applied,
         transaction_size_bytes: opts.transaction_size_bytes,
+        transaction_config: None,
         instructions,
     }
 }

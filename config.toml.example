@@ -2,6 +2,9 @@
 # Use a reliable RPC for routing + ALT fetch + blockhash.
 rpc_url = "https://api.mainnet-beta.solana.com"
 commitment = "confirmed"
+# 0 = v0 + ALT (1232 B, ComputeBudget ixs). 1 = Solana tx v1 (4096 B, no ALTs).
+transaction_version = 0
+# Used only when transaction_version = 0.
 address_lookup_tables = [
     "FNN997LrwgNn9eGrVyJUqna9DknLxHQTBKvdqgWv49ZB",
 ]

@@ -572,7 +572,8 @@ function setSummaryQuote(q) {
   const alerts = $("summaryAlerts");
   alerts.innerHTML = "";
   if (q.built && !q.built.fitsSizeGate) {
-    alerts.innerHTML = `<p class="trade-alert trade-alert-warn">Tx ${q.built.transactionSizeBytes} B — exceeds 1232 B gate</p>`;
+    const limit = (q.built.transactionVersion ?? 0) === 1 ? 4096 : 1232;
+    alerts.innerHTML = `<p class="trade-alert trade-alert-warn">Tx ${q.built.transactionSizeBytes} B — exceeds ${limit} B gate</p>`;
   }
 }
 
@@ -723,11 +724,27 @@ function renderTxInspector(inspection, statusText) {
   meta.classList.remove("hidden");
   rawWrap.classList.remove("hidden");
 
+  const isV1 = inspection.version === 1;
+  const sizeLimit = isV1 ? 4096 : 1232;
+  const sizeBytes = inspection.transactionSizeBytes;
+  const sizeLabel =
+    sizeBytes == null ? "—" : `${sizeBytes} / ${sizeLimit} B`;
+  const accountsLabel = isV1
+    ? `${inspection.totalAccountKeys} inline (v1, no ALT)`
+    : `${inspection.totalAccountKeys} (${inspection.staticAccountKeys} static + ${inspection.loadedWritableAccounts}W/${inspection.loadedReadonlyAccounts}R ALT)`;
+  const cfg = inspection.transactionConfig;
+  const configRows = isV1 && cfg
+    ? `
+    <div class="meta-kv"><span>CU limit</span><code>${cfg.computeUnitLimit?.toLocaleString?.() ?? cfg.computeUnitLimit}</code></div>
+    <div class="meta-kv"><span>Priority fee</span><code>${cfg.priorityFeeLamports} lamports</code></div>
+    <div class="meta-kv"><span>Loaded accounts</span><code>${cfg.loadedAccountsDataSizeLimit}</code></div>`
+    : "";
+
   meta.innerHTML = `
     <div class="meta-kv"><span>Version</span><code>v${inspection.version}</code></div>
     <div class="meta-kv"><span>Instructions</span><code>${inspection.numInstructions}</code></div>
-    <div class="meta-kv"><span>Tx size</span><code>${inspection.transactionSizeBytes ?? "—"} B</code></div>
-    <div class="meta-kv"><span>Account keys</span><code>${inspection.totalAccountKeys} (${inspection.staticAccountKeys} static + ${inspection.loadedWritableAccounts}W/${inspection.loadedReadonlyAccounts}R ALT)</code></div>
+    <div class="meta-kv"><span>Tx size</span><code>${sizeLabel}</code></div>
+    <div class="meta-kv"><span>Account keys</span><code>${accountsLabel}</code></div>
     <div class="meta-kv"><span>Frame</span><code>${inspection.frameUsed ?? "—"}</code></div>
     <div class="meta-kv"><span>Fee payer</span><code>${inspection.feePayer ?? "—"}</code></div>
     <div class="meta-kv"><span>Smart close</span><code>${
@@ -737,7 +754,8 @@ function renderTxInspector(inspection, statusText) {
           ? "applied"
           : "skipped"
     }</code></div>
-    <div class="meta-kv"><span>ALTs</span><code>${inspection.addressLookupTables?.length ?? 0}</code></div>
+    <div class="meta-kv"><span>ALTs</span><code>${isV1 ? "n/a" : (inspection.addressLookupTables?.length ?? 0)}</code></div>
+    ${configRows}
   `;
 
   list.innerHTML = inspection.instructions
@@ -956,14 +974,59 @@ function simulateErrorHint(err, inspection) {
   return `Instruction ${label} failed with program error ${code}.`;
 }
 
+function isV1WalletError(err) {
+  const msg = String(err?.message ?? err).toLowerCase();
+  return (
+    msg.includes("serialization of version 1") ||
+    msg.includes("supportedtransactionversions") ||
+    msg.includes("transaction version") ||
+    msg.includes("version 1")
+  );
+}
+
+function walletV1Error(err) {
+  if (isV1WalletError(err)) {
+    return new Error(
+      "This wallet cannot sign Solana v1 transactions yet. Update Phantom or Solflare and retry."
+    );
+  }
+  return err;
+}
+
 async function signAndSend(connection, built) {
   const bytes = Uint8Array.from(atob(built.transactionBase64), (c) => c.charCodeAt(0));
-  const tx = VersionedTransaction.deserialize(bytes);
-  const signed = await walletProvider.signTransaction(tx);
-  const signature = await connection.sendRawTransaction(signed.serialize(), {
-    skipPreflight: false,
-    preflightCommitment: "confirmed",
-  });
+  const isV1 = (built.transactionVersion ?? 0) === 1;
+  // web3.js 1.x cannot deserialize v1 — duck-type serialize() for wallet APIs.
+  const arg = isV1
+    ? { serialize: () => bytes }
+    : VersionedTransaction.deserialize(bytes);
+
+  let signature;
+  try {
+    if (walletProvider.signAndSendTransaction) {
+      const result = await walletProvider.signAndSendTransaction(arg, {
+        skipPreflight: false,
+      });
+      signature =
+        typeof result === "string"
+          ? result
+          : result.signature?.toString?.() ?? String(result);
+    } else {
+      const signed = await walletProvider.signTransaction(arg);
+      const signedBytes =
+        signed instanceof Uint8Array
+          ? signed
+          : typeof signed?.serialize === "function"
+            ? signed.serialize()
+            : bytes;
+      signature = await connection.sendRawTransaction(signedBytes, {
+        skipPreflight: false,
+        preflightCommitment: "confirmed",
+      });
+    }
+  } catch (err) {
+    throw isV1 ? walletV1Error(err) : err;
+  }
 
   const confirmTarget =
     built.recentBlockhash && built.lastValidBlockHeight

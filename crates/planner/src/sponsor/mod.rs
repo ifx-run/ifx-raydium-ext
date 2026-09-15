@@ -3,8 +3,8 @@
 mod fees;
 
 pub use fees::{
-    apply_repay_buffer, compute_tx_fee_lamports, sponsor_tx_signature_count,
-    LAMPORTS_PER_SIGNATURE,
+    apply_repay_buffer, compute_tx_fee_lamports, priority_fee_lamports_for_tier,
+    sponsor_tx_signature_count, LAMPORTS_PER_SIGNATURE,
 };
 
 use crate::service_fee::idempotent_ata_create;

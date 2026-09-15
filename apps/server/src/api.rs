@@ -41,6 +41,8 @@ pub struct PublicConfigResponse {
     pub default_priority_tier: String,
     pub rpc_url: String,
     pub address_lookup_table_count: usize,
+    /// 0 = v0 + ALT (1232 B). 1 = Solana tx v1 (4096 B).
+    pub transaction_version: u8,
     pub default_mint_a: String,
     pub default_mint_b: String,
     pub default_amount: String,
@@ -110,6 +112,8 @@ pub struct BuiltTxResponse {
     pub transaction_base64: String,
     pub transaction_size_bytes: usize,
     pub fits_size_gate: bool,
+    /// 0 = v0 + ALT. 1 = Solana tx v1.
+    pub transaction_version: u8,
     pub fee_payer: String,
     pub recent_blockhash: String,
     pub last_valid_block_height: u64,
@@ -178,6 +182,7 @@ pub async fn public_config(State(state): State<AppState>) -> Json<PublicConfigRe
         default_priority_tier: format!("{:?}", cfg.priority_fee.default_tier).to_lowercase(),
         rpc_url: cfg.solana.rpc_url.clone(),
         address_lookup_table_count: cfg.solana.address_lookup_tables.len(),
+        transaction_version: cfg.solana.transaction_version.as_u8(),
         default_mint_a: cfg.trade.mint_a.clone(),
         default_mint_b: cfg.trade.mint_b.clone(),
         default_amount: cfg.trade.amount.clone(),
@@ -465,6 +470,7 @@ async fn build_from_route(
             } else {
                 None
             },
+            priority_tier,
             allow_oversized: false,
         },
     )
@@ -475,6 +481,7 @@ async fn build_from_route(
         transaction_base64: finalized.transaction_base64,
         transaction_size_bytes: finalized.transaction_size_bytes,
         fits_size_gate: finalized.fits_size_gate,
+        transaction_version: finalized.transaction_version,
         fee_payer: finalized.fee_payer.to_string(),
         recent_blockhash: finalized.recent_blockhash.to_string(),
         last_valid_block_height: finalized.last_valid_block_height,

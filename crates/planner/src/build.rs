@@ -95,7 +95,8 @@ impl Planner {
 
     pub fn build(&self, plan: &BuildPlan) -> Result<BuildResult, BuildError> {
         let mut out = Vec::new();
-        out.extend(priority_ixs(self.config.as_ref(), plan.priority_tier));
+        // v0 needs ComputeBudget ixs; v1 puts the same limits in message transactionConfig.
+        out.extend(resource_ixs(self.config.as_ref(), plan.priority_tier));
 
         let needs_ifx = self.plan_needs_ifx(plan)?;
         let mut scratch_frame = if needs_ifx {
@@ -549,4 +550,12 @@ fn priority_ixs(config: &AppConfig, tier: PriorityTier) -> Vec<Instruction> {
         ComputeBudgetInstruction::set_compute_unit_limit(t.compute_unit_limit),
         ComputeBudgetInstruction::set_compute_unit_price(t.micro_lamports),
     ]
+}
+
+fn resource_ixs(config: &AppConfig, tier: PriorityTier) -> Vec<Instruction> {
+    if config.uses_tx_v1() {
+        Vec::new()
+    } else {
+        priority_ixs(config, tier)
+    }
 }

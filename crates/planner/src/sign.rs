@@ -1,5 +1,6 @@
 //! Keypair loading and partial versioned-transaction signing (sponsor co-sign).
 
+use crate::tx_v1::{is_v1_wire, sign_v1_with_keypairs};
 use solana_sdk::signature::Keypair;
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::VersionedTransaction;
@@ -29,6 +30,11 @@ pub fn sign_with_keypairs(
     serialized: &[u8],
     keypairs: &[&Keypair],
 ) -> Result<Vec<u8>, SignError> {
+    if is_v1_wire(serialized) {
+        return sign_v1_with_keypairs(serialized, keypairs)
+            .map_err(|e| SignError::Tx(e.to_string()));
+    }
+
     let mut tx: VersionedTransaction =
         bincode::deserialize(serialized).map_err(|e| SignError::Serialize(e.to_string()))?;
     let message_bytes = tx.message.serialize();

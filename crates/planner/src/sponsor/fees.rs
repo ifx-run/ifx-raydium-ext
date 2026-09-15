@@ -10,13 +10,17 @@ pub fn sponsor_tx_signature_count() -> u64 {
     2
 }
 
+/// v1 `priority_fee` (total lamports) equivalent of v0 micro-lamports-per-CU.
+pub fn priority_fee_lamports_for_tier(config: &AppConfig, tier: PriorityTier) -> u64 {
+    let t = config.priority_fee.tier(tier);
+    (t.compute_unit_limit as u64 * t.micro_lamports).div_ceil(1_000_000)
+}
+
 /// Exact tx fee budget: base signatures + priority fee ceiling
 /// (`compute_unit_limit × micro_lamports / 1_000_000`).
 pub fn compute_tx_fee_lamports(config: &AppConfig, tier: PriorityTier) -> u64 {
-    let t = config.priority_fee.tier(tier);
     let base = sponsor_tx_signature_count() * LAMPORTS_PER_SIGNATURE;
-    let priority = (t.compute_unit_limit as u64 * t.micro_lamports).div_ceil(1_000_000);
-    base + priority
+    base + priority_fee_lamports_for_tier(config, tier)
 }
 
 pub fn apply_repay_buffer(settle: u64, buffer_percent: u16) -> u64 {

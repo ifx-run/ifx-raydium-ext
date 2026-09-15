@@ -37,11 +37,62 @@ pub struct AppConfig {
     pub network: NetworkConfig,
 }
 
+/// Solana transaction message version used when compiling builds.
+///
+/// - `0` = v0 + ALTs (1232 B, ComputeBudget instructions). Default — wallets already sign this.
+/// - `1` = SIMD-0385 v1 (4096 B, no ALTs, resource limits in message config).
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq, Default)]
+#[serde(from = "TxVersionSerde")]
+pub enum SolanaTxVersion {
+    #[default]
+    V0 = 0,
+    V1 = 1,
+}
+
+impl SolanaTxVersion {
+    pub fn as_u8(self) -> u8 {
+        match self {
+            Self::V0 => 0,
+            Self::V1 => 1,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum TxVersionSerde {
+    Num(u8),
+    Str(String),
+    Bool(bool),
+}
+
+impl From<TxVersionSerde> for SolanaTxVersion {
+    fn from(v: TxVersionSerde) -> Self {
+        match v {
+            TxVersionSerde::Num(0) => Self::V0,
+            TxVersionSerde::Num(1) => Self::V1,
+            TxVersionSerde::Str(s) => match s.trim().to_ascii_lowercase().as_str() {
+                "0" | "v0" => Self::V0,
+                "1" | "v1" => Self::V1,
+                other if other == "true" => Self::V1,
+                _ => Self::V0,
+            },
+            TxVersionSerde::Bool(true) => Self::V1,
+            TxVersionSerde::Bool(false) => Self::V0,
+            TxVersionSerde::Num(_) => Self::V0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct SolanaConfig {
     pub rpc_url: String,
     #[serde(default = "default_commitment")]
     pub commitment: String,
+    /// 0 = v0 + ALT (1232 B). 1 = Solana tx v1 (4096 B, no ALTs).
+    #[serde(default, alias = "transactionVersion")]
+    pub transaction_version: SolanaTxVersion,
+    /// Used only when `transaction_version` is 0. Ignored for v1 compiles.
     #[serde(default)]
     pub address_lookup_tables: Vec<String>,
 }
@@ -225,6 +276,7 @@ impl Default for SolanaConfig {
         Self {
             rpc_url: "https://api.mainnet-beta.solana.com".to_string(),
             commitment: default_commitment(),
+            transaction_version: SolanaTxVersion::V0,
             address_lookup_tables: vec![],
         }
     }
@@ -312,6 +364,10 @@ impl NetworkConfig {
 }
 
 impl AppConfig {
+    pub fn uses_tx_v1(&self) -> bool {
+        self.solana.transaction_version == SolanaTxVersion::V1
+    }
+
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let raw = std::fs::read_to_string(path)?;
         Ok(toml::from_str(&raw)?)

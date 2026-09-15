@@ -12,7 +12,7 @@ cargo run -p ifx-raydium-server
 # open http://127.0.0.1:8788
 ```
 
-Connect a wallet (Phantom / Solflare), enter mints and amount, preview quote + assembled v0 tx in the right panel, then **Simulate** or **Sign & Send**.
+Connect a wallet (Phantom / Solflare), enter mints and amount, preview quote + assembled tx in the right panel, then **Simulate** or **Sign & Send**.
 
 ## Features
 
@@ -24,7 +24,8 @@ Connect a wallet (Phantom / Solflare), enter mints and amount, preview quote + a
 | **Sponsored gas** (Bridge + Direct SOL output) | ✅ |
 | Smart close empty input ATA | ✅ |
 | Bridge hop WSOL ATA close | ✅ |
-| v0 tx + ALT, 1232 B size gate | ✅ |
+| v0 tx + ALT, 1232 B size gate (default) | ✅ |
+| Solana **v1** tx (4096 B, message config; `transaction_version = 1`) | ✅ |
 | Raydium API v3 pool hint + RPC hydrate / fallback | ✅ |
 | Optional HTTP proxy for Raydium API | ✅ |
 | Web UI (wallet, quote, inspector, simulate) | ✅ |
@@ -63,7 +64,7 @@ Transactions assembled by this stack on Solana mainnet:
 
 See [config.toml.example](config.toml.example). Key sections:
 
-- `[solana]` — RPC, commitment, **address_lookup_tables** (required for Bridge / sponsor)
+- `[solana]` — RPC, commitment, **transaction_version** (`0` default / `1` for v1), **address_lookup_tables** (v0 only; required for Bridge / sponsor under 1232 B)
 - `[ifx]` — program id, **public_frames**
 - `[service_fee]` — bps + recipient
 - `[sponsor]` — `enabled`, `pubkey`, `keypair_path` (server co-sign), `repay_buffer_percent`
